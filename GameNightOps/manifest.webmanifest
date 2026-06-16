@@ -1,0 +1,19 @@
+{
+  "name": "E-E - GameNightOps",
+  "short_name": "GameNightOps",
+  "description": "Offline-ready pool night score tracker for EvitaativE.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#08090b",
+  "theme_color": "#e50920",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "../Assets/Logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
