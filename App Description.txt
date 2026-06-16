@@ -1,0 +1,14 @@
+EvitaativE Pool League is a lightweight, local-first pool league manager.
+
+It is designed for a single organizer who wants to:
+- Maintain a roster of players
+- Enter an entire night of singles and doubles games in one table
+- Reuse game numbers for doubles partners
+- Configure singles, doubles, and loss points
+- Automatically calculate player standings
+- Review player streaks and game history
+- Archive seasons and inspect historical standings
+- Import and export JSON backups
+
+The app does not require an account, server, or database. League data stays in the
+browser using localStorage. An optional native Windows build is also included.

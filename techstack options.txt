@@ -1,0 +1,16 @@
+Implemented stack
+
+- HTML5
+- CSS3 with reusable design tokens
+- Vanilla JavaScript
+- Browser localStorage for persistence
+- Node built-in test runner
+- Optional PyWebView and PyInstaller Windows desktop build
+- No runtime web dependencies, backend, or account system
+
+Why this stack
+
+The app is intended for one user entering nightly game sheets and has a small data model. A dependency-free
+static app is easier to run, inspect, modify, and publish as open source than a
+framework-backed application. A backend can be added later if multi-device sync
+or multiple organizers become necessary.

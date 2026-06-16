@@ -1,0 +1,11 @@
+{
+  "name": "evitaative-pool-league",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local-first pool league manager",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check league-core.js && node --check app.js && node --test"
+  },
+  "license": "MIT"
+}
