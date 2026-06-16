@@ -2,6 +2,14 @@
 
 A dependency-free, local-first pool league manager for a single organizer.
 
+## Shared Game Night Page
+
+Use the GitHub Pages version for pool night:
+
+```text
+https://isaacnewtonne.github.io/E-E/GameNightOps/
+```
+
 ## Features
 
 - Player roster and profile images
