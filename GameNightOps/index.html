@@ -132,7 +132,7 @@
       <div class="stat"><b id="needWin">0</b><span id="needWinLabel">we need to guarantee win</span></div>
       <div class="stat"><b id="needTie">0</b><span id="needTieLabel">we need to guarantee tie</span></div>
       <div class="stat"><b id="oppNeedWin">0</b><span id="oppNeedWinLabel">opponents need to beat us</span></div>
-      <div class="stat"><b id="bestWorst">—</b><span>possible range from here</span></div>
+      <div class="stat"><b id="bestWorst">—</b><span id="bestWorstLabel">possible range from here</span></div>
     </div>
   </section>
 
@@ -262,17 +262,31 @@ function renderStats() {
   setStat('oppNeedWin', 'oppNeedWinLabel', oppNeedWin, oppCanWin, 'Cannot beat us', oppNeedWin===0 ? 'opponents reached win target' : 'opponents need to beat us');
   $('bestWorst').textContent=`${fmt(p.us)}–${fmt(p.us+p.remaining)}`;
   $('gameCountText').textContent=`${p.played} / ${p.total} points played`;
+  $('bestWorstLabel').textContent='possible range from here';
   const usMax=p.us+p.remaining, themMax=p.them+p.remaining;
   let title='Match live', txt=`${fmt(p.remaining)} points left.`;
-  if (p.us > themMax) { title='WIN GUARANTEED'; txt='Opponents cannot catch us now.'; }
-  else if (p.them > usMax) { title='LOSS CONFIRMED'; txt='We cannot catch the opponents now.'; }
-  else if (p.remaining===0) {
+  if (p.remaining===0) {
+    setFinalStats(p);
     if (p.us>p.them) { title='WE WON'; txt=`Final score ${fmt(p.us)}-${fmt(p.them)}.`; }
     else if (p.us<p.them) { title='WE LOST'; txt=`Final score ${fmt(p.us)}-${fmt(p.them)}.`; }
     else { title='TIE'; txt=`Final score ${fmt(p.us)}-${fmt(p.them)}.`; }
-  } else if (needWin===0) { title='Win target reached'; txt='Keep entering remaining games for final score.'; }
+  }
+  else if (p.us > themMax) { title='WIN GUARANTEED'; txt='Opponents cannot catch us now.'; }
+  else if (p.them > usMax) { title='LOSS CONFIRMED'; txt='We cannot catch the opponents now.'; }
+  else if (needWin===0) { title='Win target reached'; txt='Keep entering remaining games for final score.'; }
   else { txt=`Need ${fmt(needWin)} more point(s) to guarantee the win, or ${fmt(needTie)} to guarantee at least a tie.`; }
   $('matchStatus').textContent=title; $('statusText').textContent=txt;
+}
+function setFinalStats(p) {
+  setCompleteStat('needWin', 'needWinLabel');
+  setCompleteStat('needTie', 'needTieLabel');
+  setCompleteStat('oppNeedWin', 'oppNeedWinLabel');
+  $('bestWorst').textContent=`${fmt(p.us)}-${fmt(p.them)}`;
+  $('bestWorstLabel').textContent='final score';
+}
+function setCompleteStat(valueId, labelId) {
+  $(valueId).textContent = 'N.A.';
+  $(labelId).textContent = 'match complete';
 }
 function setStat(valueId, labelId, needed, possible, impossibleText, label) {
   $(valueId).textContent = possible ? fmt(needed) : impossibleText;
