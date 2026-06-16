@@ -72,6 +72,7 @@
   .controls { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .setupActions { grid-column:1 / -1; display:grid; grid-template-columns:2fr 1fr; gap:8px; }
   input, select, button { width:100%; min-width:0; border:1px solid #33333c; border-radius:12px; background:#0b0b0f; color:#fff; padding:11px 10px; font:inherit; min-height:44px; }
+  input::placeholder { color:#747985; opacity:1; }
   button { cursor:pointer; font-weight:800; background:linear-gradient(180deg,#202027,#0b0b0f); }
   .primary { background:linear-gradient(180deg,#f31b2a,#8f050d); border-color:#ff3b47; }
   .smallbtn { min-height:36px; padding:8px 9px; font-size:.82rem; }
@@ -140,7 +141,7 @@
       <summary>Match setup</summary>
       <div class="controls" style="margin-top:10px">
         <input id="ourName" placeholder="Our team name" value="EvitaativE">
-        <input id="oppName" placeholder="Opponent team name" value="Opponents">
+        <input id="oppName" placeholder="Enter opponents team name">
         <input id="totalPoints" type="number" min="1" max="40" value="16" inputmode="numeric" aria-label="Total points">
         <div class="setupActions">
           <button id="applySetup" class="primary">Apply setup</button>
@@ -178,7 +179,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const STORE = 'evita_pool_tracker_v2_clean_16_points';
-let state = load() || { ourName:'EvitaativE', oppName:'Opponents', totalPoints:16, rows:[] };
+let state = load() || { ourName:'EvitaativE', oppName:'', totalPoints:16, rows:[] };
 if (state.ourName === 'Evita ativE') state.ourName = 'EvitaativE';
 
 function blankRows(points) {
@@ -242,10 +243,12 @@ function points() {
   return {us,them,played,total,remaining:total-played};
 }
 function fmt(n) { return Number.isInteger(n) ? String(n) : n.toFixed(1); }
+function ourDisplayName() { return state.ourName || 'EvitaativE'; }
+function oppDisplayName() { return state.oppName || 'Opponents'; }
 function render() {
   clampSetup(); save();
   $('ourName').value=state.ourName; $('oppName').value=state.oppName; $('totalPoints').value=state.totalPoints;
-  $('ourLabel').textContent=state.ourName || 'Our team'; $('oppLabel').textContent=state.oppName || 'Opponents';
+  $('ourLabel').textContent=ourDisplayName(); $('oppLabel').textContent=oppDisplayName();
   renderGames(); renderStats();
 }
 function renderStats() {
@@ -327,8 +330,8 @@ document.addEventListener('click', e=>{
   const t=e.target;
   if(t.dataset.act==='result') { state.rows[Number(t.dataset.i)].result=t.dataset.v; render(); }
 });
-$('applySetup').onclick=()=>{ state.ourName=$('ourName').value||'Our team'; state.oppName=$('oppName').value||'Opponents'; state.totalPoints=Number($('totalPoints').value)||16; clampSetup(); render(); $('setupDetails').open=false; };
-$('setupResetBtn').onclick=()=>{ if(confirm('Reset all games and return to 16 rows?')) { state.ourName=$('ourName').value||'EvitaativE'; state.oppName=$('oppName').value||'Opponents'; state.totalPoints=16; state.rows=blankRows(16); render(); } };
+$('applySetup').onclick=()=>{ state.ourName=$('ourName').value.trim()||'EvitaativE'; state.oppName=$('oppName').value.trim(); state.totalPoints=Number($('totalPoints').value)||16; clampSetup(); render(); $('setupDetails').open=false; };
+$('setupResetBtn').onclick=()=>{ if(confirm('Reset all games, clear opponent name, and return to 16 rows?')) { state.ourName='EvitaativE'; state.oppName=''; state.totalPoints=16; state.rows=blankRows(16); render(); } };
 $('addRowBtn').onclick=()=>{ state.totalPoints=playableCount()+1; clampSetup(); render(); };
 $('removeRowBtn').onclick=()=>{
   if(playableCount()<=1) return alert('You need at least 1 point.');
@@ -336,9 +339,9 @@ $('removeRowBtn').onclick=()=>{
   clampSetup();
   render();
 };
-$('resetBtn').onclick=()=>{ if(confirm('Reset all games for tonight?')) { state.totalPoints=16; state.rows=blankRows(16); render(); } };
+$('resetBtn').onclick=()=>{ if(confirm('Reset all games and clear opponent name for tonight?')) { state.ourName='EvitaativE'; state.oppName=''; state.totalPoints=16; state.rows=blankRows(16); render(); } };
 $('shareBtn').onclick=async()=>{
-  const p=points(); const text=`${state.ourName} vs ${state.oppName}
+  const p=points(); const text=`${ourDisplayName()} vs ${oppDisplayName()}
 Score: ${fmt(p.us)}-${fmt(p.them)}
 Played: ${p.played}/${p.total}
 Remaining: ${fmt(p.remaining)}
