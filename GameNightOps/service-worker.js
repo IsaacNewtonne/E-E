@@ -1,4 +1,4 @@
-const CACHE_NAME = 'game-night-ops-v1';
+const CACHE_NAME = 'game-night-ops-v2';
 const APP_SHELL = [
   './',
   './index.html',
