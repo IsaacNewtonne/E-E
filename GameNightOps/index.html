@@ -12,12 +12,16 @@
   }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:radial-gradient(circle at top,#17171b 0,#050505 46%,#000 100%); color:var(--text); }
-  .wrap { width:min(1220px,100%); margin:0 auto; padding:14px 12px 90px; }
+  .wrap { width:min(1220px,100%); margin:0 auto; padding:14px 12px 90px; display:flex; flex-direction:column; }
   header { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
   .logo { width:72px; height:72px; object-fit:contain; border-radius:16px; background:#000; box-shadow:0 0 0 1px #333,0 0 24px #9f071166; }
   h1 { font-size:1.25rem; line-height:1.1; margin:0; letter-spacing:.3px; }
   .sub { color:var(--muted); font-size:.82rem; margin-top:4px; }
   .card { background:linear-gradient(180deg,#15151a,#0c0c10); border:1px solid #292931; border-radius:18px; padding:12px; box-shadow:0 8px 24px #0008; margin-bottom:12px; }
+  .setupCard { order:1; }
+  .scoreCard { order:2; }
+  .gamesCard { order:3; }
+  .helpCard { order:4; }
   .scoregrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .big { background:#09090c; border:1px solid #2d2d35; border-radius:16px; padding:12px; text-align:center; }
   .big label { display:block; color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; }
@@ -42,10 +46,10 @@
   .game.partner { margin-top:-6px; border-top-style:dashed; }
   .gnum { font-weight:950; text-align:center; font-size:.92rem; }
   .gnum small { display:block; color:var(--muted); font-weight:700; font-size:.62rem; }
-  .mid { display:grid; grid-template-columns:minmax(0,1fr) 120px; gap:7px; min-width:0; }
+  .mid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 120px; gap:7px; min-width:0; }
   .result { display:grid; grid-template-columns:1fr; gap:5px; min-width:0; }
   .pillrow { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
-  .pill { border:1px solid #35353e; border-radius:10px; padding:8px 3px; font-size:.72rem; text-align:center; background:#111116; user-select:none; white-space:nowrap; }
+  .pill { border:1px solid #35353e; border-radius:10px; padding:8px 3px; font-size:.72rem; text-align:center; background:#111116; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .pill.on.uswin { background:#12301f; border-color:#13c46b; }
   .pill.on.theywin { background:#361014; border-color:#f31221; }
   .pill.on.open { background:#333; border-color:#aaa; }
@@ -79,7 +83,7 @@
     </div>
   </header>
 
-  <section class="card">
+  <section class="card scoreCard">
     <div class="scoregrid">
       <div class="big us"><label id="ourLabel">Evita ativE</label><div class="num" id="ourScore">0</div></div>
       <div class="big them"><label id="oppLabel">Opponents</label><div class="num" id="oppScore">0</div></div>
@@ -94,12 +98,12 @@
     </div>
   </section>
 
-  <section class="card">
-    <details open>
+  <section class="card setupCard">
+    <details id="setupDetails" open>
       <summary>Match setup</summary>
       <div class="controls" style="margin-top:10px">
         <input id="ourName" placeholder="Our team name" value="Evita ativE">
-        <input id="oppName" placeholder="Opponent name" value="Opponents">
+        <input id="oppName" placeholder="Opponent team name" value="Opponents">
         <input id="totalPoints" type="number" min="1" max="40" value="16" inputmode="numeric" aria-label="Total points">
         <div class="setupActions">
           <button id="applySetup" class="primary">Apply setup</button>
@@ -110,7 +114,7 @@
     </details>
   </section>
 
-  <section class="card">
+  <section class="card gamesCard">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
       <b>Game list</b>
       <span class="help" id="gameCountText"></span>
@@ -122,7 +126,7 @@
     </div>
   </section>
 
-  <section class="card help">
+  <section class="card help helpCard">
     <b>How doubles works:</b> choose “Double” on a game row. A linked partner row is inserted under it with the same game number and red highlight. The following games automatically renumber. A doubles win gives the team 1 point and gives each player 0.5 in the player stats.
   </section>
 </div>
@@ -140,7 +144,7 @@ const STORE = 'evita_pool_tracker_v2_clean_16_points';
 let state = load() || { ourName:'Evita ativE', oppName:'Opponents', totalPoints:16, rows:[] };
 
 function blankRows(points) {
-  return Array.from({length: Number(points)}, () => ({ type:'single', player:'', result:'open' }));
+  return Array.from({length: Number(points)}, () => ({ type:'single', player:'', opponent:'', result:'open' }));
 }
 function load() { try { return JSON.parse(localStorage.getItem(STORE)); } catch(e) { return null; } }
 function save() { localStorage.setItem(STORE, JSON.stringify(state)); }
@@ -153,12 +157,12 @@ function normaliseDoubles() {
     const r = rows[i] || {};
     if (r.type === 'partner') continue;
     if (r.type === 'double') {
-      cleaned.push({ type:'double', player:r.player||'', result:r.result||'open' });
+      cleaned.push({ type:'double', player:r.player||'', opponent:r.opponent||'', result:r.result||'open' });
       const next = rows[i+1]?.type === 'partner' ? rows[i+1] : {};
-      cleaned.push({ type:'partner', player:next.player||'', result:r.result||'open' });
+      cleaned.push({ type:'partner', player:next.player||'', opponent:next.opponent||'', result:r.result||'open' });
       if (rows[i+1]?.type === 'partner') i++;
     } else {
-      cleaned.push({ type:'single', player:r.player||'', result:r.result||'open' });
+      cleaned.push({ type:'single', player:r.player||'', opponent:r.opponent||'', result:r.result||'open' });
     }
   }
   state.rows = cleaned;
@@ -176,7 +180,7 @@ function clampSetup() {
   state.totalPoints = Math.max(1, Math.min(40, Number(state.totalPoints)||16));
   if (!Array.isArray(state.rows)) state.rows = [];
   normaliseDoubles();
-  while (playableCount() < state.totalPoints) state.rows.push({type:'single',player:'',result:'open'});
+  while (playableCount() < state.totalPoints) state.rows.push({type:'single',player:'',opponent:'',result:'open'});
   while (playableCount() > state.totalPoints) removeLastPlayableRow();
   normaliseDoubles();
 }
@@ -236,6 +240,7 @@ function renderGames() {
       <div class="gnum">${mn}<small>${partner?'PAIR':'GAME'}</small></div>
       <div class="mid">
         <input data-act="player" data-i="${i}" value="${escapeHtml(r.player||'')}" placeholder="${partner?'Partner name':'Player name'}">
+        <input data-act="opponent" data-i="${i}" value="${escapeHtml(r.opponent||'')}" placeholder="Opponent name">
         ${partner
           ? `<select disabled><option selected>Double partner</option></select>`
           : `<select data-act="type" data-i="${i}">
@@ -258,13 +263,14 @@ function escapeHtml(s) { return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<
 document.addEventListener('input', e=>{
   const t=e.target, i=Number(t.dataset.i);
   if(t.dataset.act==='player') { state.rows[i].player=t.value; save(); }
+  if(t.dataset.act==='opponent') { state.rows[i].opponent=t.value; save(); }
 });
 document.addEventListener('change', e=>{
   const t=e.target, i=Number(t.dataset.i);
   if(t.dataset.act==='type') {
     if(t.value==='double' && state.rows[i].type!=='double') {
       state.rows[i].type='double';
-      state.rows.splice(i+1, 0, {type:'partner', player:'', result:state.rows[i].result||'open'});
+      state.rows.splice(i+1, 0, {type:'partner', player:'', opponent:'', result:state.rows[i].result||'open'});
     } else if(t.value==='single' && state.rows[i].type==='double') {
       state.rows[i].type='single';
       if(state.rows[i+1]?.type==='partner') state.rows.splice(i+1,1);
@@ -276,7 +282,7 @@ document.addEventListener('click', e=>{
   const t=e.target;
   if(t.dataset.act==='result') { state.rows[Number(t.dataset.i)].result=t.dataset.v; render(); }
 });
-$('applySetup').onclick=()=>{ state.ourName=$('ourName').value||'Our team'; state.oppName=$('oppName').value||'Opponents'; state.totalPoints=Number($('totalPoints').value)||16; clampSetup(); render(); };
+$('applySetup').onclick=()=>{ state.ourName=$('ourName').value||'Our team'; state.oppName=$('oppName').value||'Opponents'; state.totalPoints=Number($('totalPoints').value)||16; clampSetup(); render(); $('setupDetails').open=false; };
 $('setupResetBtn').onclick=()=>{ if(confirm('Reset all games and return to 16 rows?')) { state.ourName=$('ourName').value||'Evita ativE'; state.oppName=$('oppName').value||'Opponents'; state.totalPoints=16; state.rows=blankRows(16); render(); } };
 $('addRowBtn').onclick=()=>{ state.totalPoints=playableCount()+1; clampSetup(); render(); };
 $('removeRowBtn').onclick=()=>{
