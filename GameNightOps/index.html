@@ -77,7 +77,7 @@
   .smallbtn { min-height:36px; padding:8px 9px; font-size:.82rem; }
   .danger { color:#ffb8bd; border-color:#6d141b; }
   .game { display:grid; grid-template-columns:60px minmax(0,1fr) minmax(140px,160px); gap:8px; align-items:center; border:1px solid #2a2a31; background:#0b0b0f; border-radius:15px; padding:8px; margin-bottom:8px; overflow:hidden; }
-  .game.doubles { border-color:#f31221; box-shadow:inset 0 0 0 1px #f3122144,0 0 16px #f3122122; background:linear-gradient(90deg,#180407,#0b0b0f); }
+  .game.doubles { border-color:var(--amber); box-shadow:inset 0 0 0 1px #ffb02055,0 0 16px #ffb02024; background:linear-gradient(90deg,#211703,#0b0b0f); }
   .game.partner { margin-top:-6px; border-top-style:dashed; }
   .gnum { font-weight:950; text-align:center; font-size:.92rem; transition:color .16s ease, text-shadow .16s ease; }
   .gnum.won { color:var(--green); text-shadow:0 0 12px #13c46b55; }
@@ -92,7 +92,7 @@
   .pill.on.theywin { background:#361014; border-color:#f31221; }
   .pill.on.open { background:#333; border-color:#aaa; }
   .tag { display:block; width:100%; max-width:100%; padding:2px 6px; border-radius:999px; font-size:.64rem; font-weight:900; letter-spacing:.03em; border:1px solid #444; color:#ddd; text-align:center; white-space:normal; line-height:1.15; }
-  .tag.double { color:#fff; border-color:#f31221; background:#f3122133; }
+  .tag.double { color:#fff; border-color:var(--amber); background:#ffb02033; }
   .footerbar { position:fixed; left:0; right:0; bottom:0; background:#050505e8; backdrop-filter:blur(10px); border-top:1px solid #282830; padding:9px 12px calc(9px + env(safe-area-inset-bottom)); }
   .footerinner { max-width:1220px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .gameActions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid #25252d; }
@@ -128,9 +128,9 @@
     <div class="stats">
       <div class="stat status"><b id="matchStatus">Start match</b><span id="statusText">Enter results as games finish.</span></div>
       <div class="stat"><b id="remainingPts">0</b><span>points still available</span></div>
-      <div class="stat"><b id="needWin">0</b><span>we need to guarantee win</span></div>
-      <div class="stat"><b id="needTie">0</b><span>we need to guarantee tie</span></div>
-      <div class="stat"><b id="oppNeedWin">0</b><span>opponents need to beat us</span></div>
+      <div class="stat"><b id="needWin">0</b><span id="needWinLabel">we need to guarantee win</span></div>
+      <div class="stat"><b id="needTie">0</b><span id="needTieLabel">we need to guarantee tie</span></div>
+      <div class="stat"><b id="oppNeedWin">0</b><span id="oppNeedWinLabel">opponents need to beat us</span></div>
       <div class="stat"><b id="bestWorst">—</b><span>possible range from here</span></div>
     </div>
   </section>
@@ -164,7 +164,7 @@
   </section>
 
   <section class="card help helpCard">
-    <b>How doubles works:</b> choose “Double” on a game row. A linked partner row is inserted under it with the same game number and red highlight. The following games automatically renumber. A doubles win gives the team 1 point and gives each player 0.5 in the player stats.
+    <b>How doubles works:</b> choose “Double” on a game row. A linked partner row is inserted under it with the same game number and yellow highlight. The following games automatically renumber. A doubles win gives the team 1 point and gives each player 0.5 in the player stats.
   </section>
 </div>
 
@@ -253,7 +253,10 @@ function renderStats() {
   const needWin=Math.max(0, winNeed-p.us); const needTie=Math.max(0, half-p.us);
   const oppNeedWin=Math.max(0, winNeed-p.them);
   $('ourScore').textContent=fmt(p.us); $('oppScore').textContent=fmt(p.them); $('remainingPts').textContent=fmt(p.remaining);
-  $('needWin').textContent=fmt(needWin); $('needTie').textContent=fmt(needTie); $('oppNeedWin').textContent=fmt(oppNeedWin);
+  const usCanWin=p.us+p.remaining>=winNeed, usCanTie=p.us+p.remaining>=half, oppCanWin=p.them+p.remaining>=winNeed;
+  setStat('needWin', 'needWinLabel', needWin, usCanWin, 'Cannot win', needWin===0 ? 'win target reached' : 'we need to guarantee win');
+  setStat('needTie', 'needTieLabel', needTie, usCanTie, 'Cannot tie', needTie===0 ? 'tie target reached' : 'we need to guarantee tie');
+  setStat('oppNeedWin', 'oppNeedWinLabel', oppNeedWin, oppCanWin, 'Cannot beat us', oppNeedWin===0 ? 'opponents reached win target' : 'opponents need to beat us');
   $('bestWorst').textContent=`${fmt(p.us)}–${fmt(p.us+p.remaining)}`;
   $('gameCountText').textContent=`${p.played} / ${p.total} points played`;
   const usMax=p.us+p.remaining, themMax=p.them+p.remaining;
@@ -267,6 +270,10 @@ function renderStats() {
   } else if (needWin===0) { title='Win target reached'; txt='Keep entering remaining games for final score.'; }
   else { txt=`Need ${fmt(needWin)} more point(s) to guarantee the win, or ${fmt(needTie)} to guarantee at least a tie.`; }
   $('matchStatus').textContent=title; $('statusText').textContent=txt;
+}
+function setStat(valueId, labelId, needed, possible, impossibleText, label) {
+  $(valueId).textContent = possible ? fmt(needed) : impossibleText;
+  $(labelId).textContent = possible ? label : 'not enough points left';
 }
 function renderGames() {
   const box=$('games'); box.innerHTML='';
