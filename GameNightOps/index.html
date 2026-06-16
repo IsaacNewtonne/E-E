@@ -183,9 +183,9 @@
 <script>
 const $ = id => document.getElementById(id);
 const STORE = 'evita_pool_tracker_v2_clean_16_points';
-let state = load() || { ourName:'EvitaativE', oppName:'', totalPoints:16, includePlayerNames:false, rows:[] };
+let state = load() || { ourName:'EvitaativE', oppName:'', totalPoints:16, includePlayerNames:true, rows:[] };
 if (state.ourName === 'Evita ativE') state.ourName = 'EvitaativE';
-if (typeof state.includePlayerNames !== 'boolean') state.includePlayerNames = false;
+if (typeof state.includePlayerNames !== 'boolean') state.includePlayerNames = true;
 
 function blankRows(points) {
   return Array.from({length: Number(points)}, () => ({ type:'single', player:'', opponent:'', result:'open' }));
@@ -354,7 +354,7 @@ document.addEventListener('click', e=>{
   if(t.dataset.act==='result') { state.rows[Number(t.dataset.i)].result=t.dataset.v; render(); }
 });
 $('applySetup').onclick=()=>{ state.includePlayerNames=$('includePlayerNames').checked; state.ourName=$('ourName').value.trim()||'EvitaativE'; state.oppName=$('oppName').value.trim(); state.totalPoints=Number($('totalPoints').value)||16; clampSetup(); render(); $('setupDetails').open=false; };
-$('setupResetBtn').onclick=()=>{ if(confirm('Reset all games, clear opponent name, and return to 16 rows?')) { state.ourName='EvitaativE'; state.oppName=''; state.includePlayerNames=false; state.totalPoints=16; state.rows=blankRows(16); render(); } };
+$('setupResetBtn').onclick=()=>{ if(confirm('Reset all games, clear opponent name, and return to 16 rows?')) { state.ourName='EvitaativE'; state.oppName=''; state.includePlayerNames=true; state.totalPoints=16; state.rows=blankRows(16); render(); } };
 $('addRowBtn').onclick=()=>{ state.totalPoints=playableCount()+1; clampSetup(); render(); };
 $('removeRowBtn').onclick=()=>{
   if(playableCount()<=1) return alert('You need at least 1 point.');
@@ -362,7 +362,7 @@ $('removeRowBtn').onclick=()=>{
   clampSetup();
   render();
 };
-$('resetBtn').onclick=()=>{ if(confirm('Reset all games and clear opponent name for tonight?')) { state.ourName='EvitaativE'; state.oppName=''; state.includePlayerNames=false; state.totalPoints=16; state.rows=blankRows(16); render(); } };
+$('resetBtn').onclick=()=>{ if(confirm('Reset all games and clear opponent name for tonight?')) { state.ourName='EvitaativE'; state.oppName=''; state.includePlayerNames=true; state.totalPoints=16; state.rows=blankRows(16); render(); } };
 $('shareBtn').onclick=async()=>{
   const p=points(); const text=`${ourDisplayName()} vs ${oppDisplayName()}
 Score: ${fmt(p.us)}-${fmt(p.them)}
