@@ -99,6 +99,13 @@
   .tag.double { color:#fff; border-color:var(--amber); background:#ffb02033; }
   .footerbar { position:fixed; left:0; right:0; bottom:0; background:#050505e8; backdrop-filter:blur(10px); border-top:1px solid #282830; padding:9px 12px calc(9px + env(safe-area-inset-bottom)); }
   .footerinner { max-width:1220px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .toast { position:fixed; left:50%; bottom:calc(76px + env(safe-area-inset-bottom)); z-index:20; width:min(420px,calc(100% - 24px)); transform:translate(-50%,18px); opacity:0; pointer-events:none; transition:opacity .16s ease,transform .16s ease; }
+  .toast.show { opacity:1; transform:translate(-50%,0); }
+  .toastInner { display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border:1px solid #3a3a43; border-radius:14px; background:linear-gradient(180deg,#1b1b21,#0d0d11); box-shadow:0 14px 36px #000b; }
+  .toastMark { width:10px; min-width:10px; height:10px; margin-top:5px; border-radius:50%; background:var(--green); box-shadow:0 0 14px #13c46b99; }
+  .toast.error .toastMark { background:var(--red); box-shadow:0 0 14px #f3122199; }
+  .toast b { display:block; margin-bottom:2px; font-size:.82rem; }
+  .toast span { display:block; color:var(--muted); font-size:.78rem; line-height:1.35; }
   .gameActions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid #25252d; }
   @media (min-width:900px) {
     .gameActions { width:min(720px,100%); margin-left:auto; margin-right:auto; }
@@ -177,6 +184,12 @@
   <div class="footerinner">
     <button id="shareBtn">Copy page image</button>
     <button id="resetBtn" class="danger">Reset night</button>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite">
+  <div class="toastInner">
+    <i class="toastMark"></i>
+    <div><b id="toastTitle"></b><span id="toastText"></span></div>
   </div>
 </div>
 
@@ -357,86 +370,205 @@ $('applySetup').onclick=()=>{ state.includePlayerNames=$('includePlayerNames').c
 $('setupResetBtn').onclick=()=>{ if(confirm('Reset all games, clear opponent name, and return to 16 rows?')) { state.ourName='EvitaativE'; state.oppName=''; state.includePlayerNames=true; state.totalPoints=16; state.rows=blankRows(16); render(); } };
 $('addRowBtn').onclick=()=>{ state.totalPoints=playableCount()+1; clampSetup(); render(); };
 $('removeRowBtn').onclick=()=>{
-  if(playableCount()<=1) return alert('You need at least 1 point.');
+  if(playableCount()<=1) return notify('Cannot remove row', 'You need at least 1 point.', 'error');
   state.totalPoints=playableCount()-1;
   clampSetup();
   render();
 };
 $('resetBtn').onclick=()=>{ if(confirm('Reset all games and clear opponent name for tonight?')) { state.ourName='EvitaativE'; state.oppName=''; state.includePlayerNames=true; state.totalPoints=16; state.rows=blankRows(16); render(); } };
-function syncFormState(source, clone) {
-  const sourceControls = source.querySelectorAll('input, select, textarea');
-  const cloneControls = clone.querySelectorAll('input, select, textarea');
-  sourceControls.forEach((control, i) => {
-    const copy = cloneControls[i];
-    if (!copy) return;
-    if (control.tagName === 'SELECT') {
-      [...copy.options].forEach((option, optionIndex) => {
-        option.selected = optionIndex === control.selectedIndex;
-        option.toggleAttribute('selected', option.selected);
-      });
-      return;
-    }
-    if (control.type === 'checkbox' || control.type === 'radio') {
-      copy.checked = control.checked;
-      copy.toggleAttribute('checked', control.checked);
-      return;
-    }
-    copy.value = control.value;
-    copy.setAttribute('value', control.value);
-  });
-}
 function canvasToBlob(canvas) {
   return new Promise((resolve, reject) => {
     canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not create image.')), 'image/png');
   });
 }
-async function pageImageBlob() {
-  const source = document.querySelector('.wrap');
-  const clone = source.cloneNode(true);
-  syncFormState(source, clone);
-  const width = Math.ceil(source.getBoundingClientRect().width);
-  const height = Math.ceil(source.scrollHeight - 76);
-  clone.style.width = `${width}px`;
-  clone.style.maxWidth = 'none';
-  clone.style.margin = '0';
-  clone.style.paddingBottom = '14px';
-  const wrapper = document.createElement('div');
-  wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-  wrapper.style.width = `${width}px`;
-  wrapper.style.minHeight = `${height}px`;
-  wrapper.style.background = 'radial-gradient(circle at top,#17171b 0,#050505 46%,#000 100%)';
-  const style = document.createElement('style');
-  style.textContent = `${document.querySelector('style').textContent}
-    * { animation:none !important; transition:none !important; }
-    body { margin:0 !important; background:#050505 !important; }
-    .footerbar { display:none !important; }
-  `;
-  wrapper.append(style, clone);
-  const html = new XMLSerializer().serializeToString(wrapper);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><foreignObject width="100%" height="100%">${html}</foreignObject></svg>`;
-  const url = URL.createObjectURL(new Blob([svg], { type:'image/svg+xml;charset=utf-8' }));
-  try {
-    const img = new Image();
-    img.decoding = 'async';
-    const loaded = new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = () => reject(new Error('Could not render page image.'));
-    });
-    img.src = url;
-    await loaded;
-    const scale = Math.min(2, window.devicePixelRatio || 1);
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(width * scale);
-    canvas.height = Math.round(height * scale);
-    const ctx = canvas.getContext('2d');
-    ctx.scale(scale, scale);
-    ctx.fillStyle = '#050505';
-    ctx.fillRect(0, 0, width, height);
-    ctx.drawImage(img, 0, 0, width, height);
-    return await canvasToBlob(canvas);
-  } finally {
-    URL.revokeObjectURL(url);
+function drawRound(ctx, x, y, w, h, r, fill, stroke) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
+}
+function setFont(ctx, weight, size) {
+  ctx.font = `${weight} ${size}px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif`;
+}
+function textFit(ctx, text, x, y, maxWidth) {
+  let value = String(text || '');
+  if (ctx.measureText(value).width <= maxWidth) { ctx.fillText(value, x, y); return; }
+  while (value.length && ctx.measureText(value + '...').width > maxWidth) value = value.slice(0, -1);
+  ctx.fillText(value + '...', x, y);
+}
+function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines=2) {
+  const words = String(text || '').split(/\s+/);
+  let line = '', lines = [];
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; }
+    else line = test;
   }
+  if (line) lines.push(line);
+  lines.slice(0, maxLines).forEach((l, i) => {
+    if (i === maxLines - 1 && lines.length > maxLines) l += '...';
+    textFit(ctx, l, x, y + i * lineHeight, maxWidth);
+  });
+}
+function drawCard(ctx, x, y, w, h, accent=false) {
+  const grad = ctx.createLinearGradient(0, y, 0, y + h);
+  grad.addColorStop(0, accent ? '#21070a' : '#15151a');
+  grad.addColorStop(1, '#0c0c10');
+  drawRound(ctx, x, y, w, h, 18, grad, accent ? '#451017' : '#292931');
+}
+function drawInputBox(ctx, x, y, w, h, text, muted=false) {
+  drawRound(ctx, x, y, w, h, 8, '#0b0b0f', '#33333c');
+  ctx.fillStyle = muted ? '#747985' : '#f5f5f5';
+  setFont(ctx, '500', 11);
+  textFit(ctx, text || '', x + 9, y + h / 2 + 4, w - 18);
+}
+function drawPill(ctx, x, y, w, h, label, on, kind) {
+  const fills = { us:'#12301f', them:'#361014', open:'#333333' };
+  const lines = { us:'#13c46b', them:'#f31221', open:'#aaaaaa' };
+  drawRound(ctx, x, y, w, h, 8, on ? fills[kind] : '#111116', on ? lines[kind] : '#35353e');
+  ctx.fillStyle = '#f5f5f5';
+  setFont(ctx, '800', 9);
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x + w / 2, y + h / 2 + 3);
+  ctx.textAlign = 'left';
+}
+function drawImageLogo(ctx, x, y, size) {
+  const img = document.querySelector('.logo');
+  drawRound(ctx, x, y, size, size, 12, '#000000', '#333333');
+  try { ctx.drawImage(img, x + 4, y + 4, size - 8, size - 8); } catch(e) {}
+}
+function drawShareCanvas() {
+  const p = points();
+  const cssWidth = Math.min(760, Math.max(360, Math.round(document.querySelector('.wrap').getBoundingClientRect().width || 430)));
+  const pad = 12, gap = 10, rowH = cssWidth < 560 ? 108 : 58;
+  const gamesH = 42 + state.rows.length * (rowH + 8) + 52;
+  const setupH = 38, scoreH = 168, helpH = 62;
+  const height = pad + 72 + gap + setupH + gap + scoreH + gap + gamesH + gap + helpH + pad;
+  const scale = Math.min(2, window.devicePixelRatio || 1);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(cssWidth * scale);
+  canvas.height = Math.round(height * scale);
+  canvas.style.width = `${cssWidth}px`;
+  canvas.style.height = `${height}px`;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+  const bg = ctx.createRadialGradient(cssWidth / 2, 0, 20, cssWidth / 2, 0, height);
+  bg.addColorStop(0, '#17171b');
+  bg.addColorStop(.46, '#050505');
+  bg.addColorStop(1, '#000000');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, cssWidth, height);
+
+  let y = pad;
+  drawImageLogo(ctx, pad, y, 58);
+  ctx.fillStyle = '#f5f5f5';
+  setFont(ctx, '900', 17);
+  ctx.fillText('EvitaativE', pad + 70, y + 27);
+  setFont(ctx, '800', 13);
+  ctx.fillText('Game Night Tracker', pad + 70, y + 45);
+  y += 72;
+
+  drawCard(ctx, pad, y, cssWidth - pad * 2, setupH);
+  ctx.fillStyle = '#f5f5f5';
+  setFont(ctx, '900', 12);
+  ctx.fillText('Match setup', pad + 18, y + 24);
+  y += setupH + gap;
+
+  drawCard(ctx, pad, y, cssWidth - pad * 2, scoreH, true);
+  const inner = pad + 10, cardW = cssWidth - pad * 2 - 20;
+  const halfW = (cardW - 8) / 2;
+  drawRound(ctx, inner, y + 10, halfW, 50, 10, '#09090c', '#2d2d35');
+  drawRound(ctx, inner + halfW + 8, y + 10, halfW, 50, 10, '#09090c', '#2d2d35');
+  ctx.textAlign = 'left';
+  setFont(ctx, '800', 8); ctx.fillStyle = '#a8a8ad';
+  textFit(ctx, ourDisplayName().toUpperCase(), inner + 8, y + 23, halfW - 16);
+  textFit(ctx, oppDisplayName().toUpperCase(), inner + halfW + 16, y + 23, halfW - 16);
+  ctx.textAlign = 'center';
+  setFont(ctx, '900', 24); ctx.fillStyle = '#f5f5f5';
+  ctx.fillText(fmt(p.us), inner + halfW / 2, y + 49);
+  ctx.fillStyle = '#f31221';
+  ctx.fillText(fmt(p.them), inner + halfW + 8 + halfW / 2, y + 49);
+  ctx.textAlign = 'left';
+  const statW = (cardW - 8) / 2;
+  const stats = [
+    [$('matchStatus').textContent, $('statusText').textContent, true],
+    [$('remainingPts').textContent, 'points still available'],
+    [$('needWin').textContent, $('needWinLabel').textContent],
+    [$('bestWorst').textContent, $('bestWorstLabel').textContent]
+  ];
+  stats.forEach((s, i) => {
+    const sx = inner + (i % 2) * (statW + 8), sy = y + 68 + Math.floor(i / 2) * 43;
+    drawRound(ctx, sx, sy, statW, 36, 9, s[2] ? '#21070a' : '#0a0a0d', s[2] ? '#4b1015' : '#282830');
+    ctx.fillStyle = '#f5f5f5'; setFont(ctx, '900', 12); textFit(ctx, s[0], sx + 9, sy + 15, statW - 18);
+    ctx.fillStyle = '#a8a8ad'; setFont(ctx, '700', 8); textFit(ctx, s[1], sx + 9, sy + 28, statW - 18);
+  });
+  y += scoreH + gap;
+
+  drawCard(ctx, pad, y, cssWidth - pad * 2, gamesH);
+  ctx.fillStyle = '#f5f5f5'; setFont(ctx, '900', 12); ctx.fillText('Game list', pad + 12, y + 24);
+  ctx.fillStyle = '#a8a8ad'; setFont(ctx, '700', 9); ctx.textAlign = 'right';
+  ctx.fillText(`${p.played} / ${p.total} points played`, cssWidth - pad - 12, y + 24);
+  ctx.textAlign = 'left';
+  let gy = y + 42;
+  state.rows.forEach((r, i) => {
+    const partner = isPartner(i), mn = matchNumberForRow(i), result = partner ? state.rows[i-1].result : r.result;
+    const isDouble = r.type === 'double' || partner;
+    drawRound(ctx, pad + 8, gy, cssWidth - pad * 2 - 16, rowH, 12, isDouble ? '#211703' : '#0b0b0f', isDouble ? '#ffb020' : '#2a2a31');
+    ctx.fillStyle = result === 'us' ? '#13c46b' : result === 'them' ? '#f31221' : '#f5f5f5';
+    setFont(ctx, '900', 13); ctx.textAlign = 'center'; ctx.fillText(String(mn), pad + 34, gy + 24);
+    setFont(ctx, '800', 8); ctx.fillText(partner ? 'PAIR' : 'GAME', pad + 34, gy + 39); ctx.textAlign = 'left';
+    const left = pad + 64, right = cssWidth - pad - 18;
+    if (cssWidth < 560) {
+      if (state.includePlayerNames) {
+        drawInputBox(ctx, left, gy + 8, right - left, 26, r.player || (partner ? 'Partner name' : 'Player name'), !r.player);
+        drawInputBox(ctx, left, gy + 39, right - left, 26, r.opponent || 'Opponent name', !r.opponent);
+      }
+      drawPill(ctx, left, gy + 73, 52, 24, 'Us', result === 'us', 'us');
+      drawPill(ctx, left + 58, gy + 73, 58, 24, 'Them', result === 'them', 'them');
+      drawPill(ctx, left + 122, gy + 73, 58, 24, 'Open', result === 'open', 'open');
+      ctx.fillStyle = isDouble ? '#ffdd91' : '#dddddd'; setFont(ctx, '900', 9);
+      textFit(ctx, partner ? 'DOUBLE PARTNER' : r.type === 'double' ? 'DOUBLE START' : 'SINGLE', left + 190, gy + 89, right - left - 190);
+    } else {
+      const selectW = 105, resultW = 142, inputW = Math.max(90, (right - left - selectW - resultW - 22) / (state.includePlayerNames ? 2 : 1));
+      let x = left;
+      if (state.includePlayerNames) {
+        drawInputBox(ctx, x, gy + 14, inputW, 28, r.player || (partner ? 'Partner name' : 'Player name'), !r.player); x += inputW + 6;
+        drawInputBox(ctx, x, gy + 14, inputW, 28, r.opponent || 'Opponent name', !r.opponent); x += inputW + 6;
+      }
+      drawInputBox(ctx, x, gy + 14, selectW, 28, partner ? 'Double partner' : r.type === 'double' ? 'Double' : 'Single'); x = right - resultW;
+      ctx.fillStyle = isDouble ? '#ffdd91' : '#dddddd'; setFont(ctx, '900', 8);
+      textFit(ctx, partner ? 'DOUBLE PARTNER' : r.type === 'double' ? 'DOUBLE START' : 'SINGLE', x, gy + 14, resultW);
+      drawPill(ctx, x, gy + 22, 40, 24, 'Us', result === 'us', 'us');
+      drawPill(ctx, x + 46, gy + 22, 46, 24, 'Them', result === 'them', 'them');
+      drawPill(ctx, x + 98, gy + 22, 44, 24, 'Open', result === 'open', 'open');
+    }
+    gy += rowH + 8;
+  });
+  drawRound(ctx, pad + 80, gy + 4, (cssWidth - pad * 2 - 176) / 2, 28, 8, '#0b0b0f', '#33333c');
+  drawRound(ctx, cssWidth / 2 + 8, gy + 4, (cssWidth - pad * 2 - 176) / 2, 28, 8, '#0b0b0f', '#6d141b');
+  ctx.fillStyle = '#f5f5f5'; setFont(ctx, '900', 9); ctx.textAlign = 'center';
+  ctx.fillText('+ Add row', pad + 80 + (cssWidth - pad * 2 - 176) / 4, gy + 22);
+  ctx.fillStyle = '#ffb8bd'; ctx.fillText('- Remove row', cssWidth / 2 + 8 + (cssWidth - pad * 2 - 176) / 4, gy + 22);
+  ctx.textAlign = 'left';
+  y += gamesH + gap;
+
+  drawCard(ctx, pad, y, cssWidth - pad * 2, helpH);
+  ctx.fillStyle = '#f5f5f5'; setFont(ctx, '900', 11); ctx.fillText('How doubles works:', pad + 12, y + 21);
+  ctx.fillStyle = '#a8a8ad'; setFont(ctx, '700', 9);
+  wrapText(ctx, 'Choose Double on a game row. A linked partner row shares the same game number and team point.', pad + 12, y + 38, cssWidth - pad * 2 - 24, 13, 2);
+  return canvas;
+}
+async function pageImageBlob() {
+  return await canvasToBlob(drawShareCanvas());
 }
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -448,6 +580,16 @@ function downloadBlob(blob, filename) {
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+let toastTimer;
+function notify(title, text='', kind='success') {
+  clearTimeout(toastTimer);
+  const toast = $('toast');
+  toast.className = `toast ${kind}`;
+  $('toastTitle').textContent = title;
+  $('toastText').textContent = text;
+  requestAnimationFrame(() => toast.classList.add('show'));
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3600);
+}
 $('shareBtn').onclick=async()=>{
   const button = $('shareBtn');
   const previousText = button.textContent;
@@ -457,14 +599,14 @@ $('shareBtn').onclick=async()=>{
     const blob = await pageImageBlob();
     if (!navigator.clipboard?.write || !window.ClipboardItem) throw new Error('Image clipboard is not supported.');
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-    alert('Page image copied. Paste it into WhatsApp.');
+    notify('Page image copied', 'Paste it into WhatsApp.');
   } catch(e) {
     try {
       const blob = await pageImageBlob();
       downloadBlob(blob, 'game-night-summary.png');
-      alert('Your browser would not copy an image directly, so the page image was downloaded instead.');
+      notify('Image downloaded', 'This browser blocked image clipboard access.');
     } catch(err) {
-      alert('Could not create the page image on this browser.');
+      notify('Could not create image', 'Try updating the browser or using Chrome/Edge.', 'error');
     }
   } finally {
     button.disabled = false;
