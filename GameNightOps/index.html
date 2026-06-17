@@ -108,9 +108,9 @@
   .toast span { display:block; color:var(--muted); font-size:.78rem; line-height:1.35; }
   .gameActions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid #25252d; }
   @media (min-width:900px) {
-    .wrap { padding-bottom:0; }
+    .wrap { min-height:100dvh; padding-bottom:0; }
     .helpCard { margin-bottom:0; }
-    .footerbar { position:static; background:transparent; backdrop-filter:none; border-top:0; padding:12px 12px 14px; }
+    .footerbar { position:static; margin-top:auto; background:transparent; backdrop-filter:none; border-top:0; padding:12px 12px 0; }
     .gameActions { width:min(720px,100%); margin-left:auto; margin-right:auto; }
   }
 
