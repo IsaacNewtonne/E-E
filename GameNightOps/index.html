@@ -181,12 +181,12 @@
   <section class="card help helpCard">
     <b>How doubles works:</b> choose “Double” on a game row. A linked partner row is inserted under it with the same game number and yellow highlight. The following games automatically renumber. A doubles win gives the team 1 point and gives each player 0.5 in the player stats.
   </section>
-</div>
 
-<div class="footerbar">
-  <div class="footerinner">
-    <button id="shareBtn">Copy page image</button>
-    <button id="resetBtn" class="danger">Reset night</button>
+  <div class="footerbar">
+    <div class="footerinner">
+      <button id="shareBtn">Copy page image</button>
+      <button id="resetBtn" class="danger">Reset night</button>
+    </div>
   </div>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite">
@@ -452,12 +452,11 @@ function drawImageLogo(ctx, x, y, size) {
 function drawShareCanvas() {
   const p = points();
   const cssWidth = 1240;
-  const a4Height = 1754;
   const pad = 12, gap = 10, rowH = cssWidth < 560 ? 108 : 58;
   const gamesH = 42 + state.rows.length * (rowH + 8) + 52;
   const setupH = 38, scoreH = 168, helpH = 62;
   const contentHeight = pad + 72 + gap + setupH + gap + scoreH + gap + gamesH + gap + helpH + pad;
-  const height = Math.max(a4Height, contentHeight);
+  const height = contentHeight;
   const scale = 3;
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(cssWidth * scale);
