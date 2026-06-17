@@ -175,7 +175,7 @@
 
 <div class="footerbar">
   <div class="footerinner">
-    <button id="shareBtn">Copy summary</button>
+    <button id="shareBtn">Copy page image</button>
     <button id="resetBtn" class="danger">Reset night</button>
   </div>
 </div>
@@ -363,13 +363,113 @@ $('removeRowBtn').onclick=()=>{
   render();
 };
 $('resetBtn').onclick=()=>{ if(confirm('Reset all games and clear opponent name for tonight?')) { state.ourName='EvitaativE'; state.oppName=''; state.includePlayerNames=true; state.totalPoints=16; state.rows=blankRows(16); render(); } };
+function syncFormState(source, clone) {
+  const sourceControls = source.querySelectorAll('input, select, textarea');
+  const cloneControls = clone.querySelectorAll('input, select, textarea');
+  sourceControls.forEach((control, i) => {
+    const copy = cloneControls[i];
+    if (!copy) return;
+    if (control.tagName === 'SELECT') {
+      [...copy.options].forEach((option, optionIndex) => {
+        option.selected = optionIndex === control.selectedIndex;
+        option.toggleAttribute('selected', option.selected);
+      });
+      return;
+    }
+    if (control.type === 'checkbox' || control.type === 'radio') {
+      copy.checked = control.checked;
+      copy.toggleAttribute('checked', control.checked);
+      return;
+    }
+    copy.value = control.value;
+    copy.setAttribute('value', control.value);
+  });
+}
+function canvasToBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not create image.')), 'image/png');
+  });
+}
+async function pageImageBlob() {
+  const source = document.querySelector('.wrap');
+  const clone = source.cloneNode(true);
+  syncFormState(source, clone);
+  const width = Math.ceil(source.getBoundingClientRect().width);
+  const height = Math.ceil(source.scrollHeight - 76);
+  clone.style.width = `${width}px`;
+  clone.style.maxWidth = 'none';
+  clone.style.margin = '0';
+  clone.style.paddingBottom = '14px';
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+  wrapper.style.width = `${width}px`;
+  wrapper.style.minHeight = `${height}px`;
+  wrapper.style.background = 'radial-gradient(circle at top,#17171b 0,#050505 46%,#000 100%)';
+  const style = document.createElement('style');
+  style.textContent = `${document.querySelector('style').textContent}
+    * { animation:none !important; transition:none !important; }
+    body { margin:0 !important; background:#050505 !important; }
+    .footerbar { display:none !important; }
+  `;
+  wrapper.append(style, clone);
+  const html = new XMLSerializer().serializeToString(wrapper);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><foreignObject width="100%" height="100%">${html}</foreignObject></svg>`;
+  const url = URL.createObjectURL(new Blob([svg], { type:'image/svg+xml;charset=utf-8' }));
+  try {
+    const img = new Image();
+    img.decoding = 'async';
+    const loaded = new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error('Could not render page image.'));
+    });
+    img.src = url;
+    await loaded;
+    const scale = Math.min(2, window.devicePixelRatio || 1);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+    return await canvasToBlob(canvas);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 $('shareBtn').onclick=async()=>{
-  const p=points(); const text=`${ourDisplayName()} vs ${oppDisplayName()}
-Score: ${fmt(p.us)}-${fmt(p.them)}
-Played: ${p.played}/${p.total}
-Remaining: ${fmt(p.remaining)}
-${$('matchStatus').textContent} - ${$('statusText').textContent}`;
-  try { await navigator.clipboard.writeText(text); alert('Summary copied. Paste it into WhatsApp.'); } catch(e) { prompt('Copy summary:', text); }
+  const button = $('shareBtn');
+  const previousText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Copying image...';
+  try {
+    const blob = await pageImageBlob();
+    if (!navigator.clipboard?.write || !window.ClipboardItem) throw new Error('Image clipboard is not supported.');
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    alert('Page image copied. Paste it into WhatsApp.');
+  } catch(e) {
+    try {
+      const blob = await pageImageBlob();
+      downloadBlob(blob, 'game-night-summary.png');
+      alert('Your browser would not copy an image directly, so the page image was downloaded instead.');
+    } catch(err) {
+      alert('Could not create the page image on this browser.');
+    }
+  } finally {
+    button.disabled = false;
+    button.textContent = previousText;
+  }
 };
 if(!state.rows.length) state.rows=blankRows(state.totalPoints);
 render();
