@@ -448,12 +448,12 @@ function drawImageLogo(ctx, x, y, size) {
 }
 function drawShareCanvas() {
   const p = points();
-  const cssWidth = Math.min(760, Math.max(360, Math.round(document.querySelector('.wrap').getBoundingClientRect().width || 430)));
+  const cssWidth = 430;
   const pad = 12, gap = 10, rowH = cssWidth < 560 ? 108 : 58;
   const gamesH = 42 + state.rows.length * (rowH + 8) + 52;
   const setupH = 38, scoreH = 168, helpH = 62;
   const height = pad + 72 + gap + setupH + gap + scoreH + gap + gamesH + gap + helpH + pad;
-  const scale = Math.min(2, window.devicePixelRatio || 1);
+  const scale = 4;
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(cssWidth * scale);
   canvas.height = Math.round(height * scale);
